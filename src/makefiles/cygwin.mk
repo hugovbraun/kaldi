@@ -15,7 +15,7 @@ CXXFLAGS = -std=c++11 -U__STRICT_ANSI__ -I.. -I$(OPENFSTINC) -O1 $(EXTRA_CXXFLAG
            -Wno-deprecated-declarations -Winit-self \
            -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
            -DHAVE_CLAPACK -I../../tools/CLAPACK/ \
-           -msse -msse2 -O -Wa,-mbig-obj \
+           -march=native -O -Wa,-mbig-obj \
            -g # -O0 -DKALDI_PARANOID
 
 ifeq ($(KALDI_FLAVOR), dynamic)

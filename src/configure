@@ -1173,6 +1173,8 @@ elif [ "`uname`" == "Linux" ]; then
       linux_configure_atlas_generic /usr/lib64/atlas "so.3" || \
       linux_configure_atlas_generic /usr/lib/x86_64-linux-gnu/ "so.3" || \
       linux_configure_atlas_generic /usr/lib/x86_64-linux-gnu/ "so" || \
+      linux_configure_atlas_generic /usr/lib/aarch64-linux-gnu/ "so" || \
+      linux_configure_atlas_generic /usr/lib/aarch64-linux-gnu/ "so.3" || \
       linux_configure_redhat_fat 64 || \
       linux_configure_redhat_fat || \
       linux_configure_atlas_static || \
