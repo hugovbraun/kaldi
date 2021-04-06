@@ -16,6 +16,7 @@
 // limitations under the License.
 
 #include "cudadecoder/lattice-postprocessor.h"
+
 #include "fstext/fstext-lib.h"
 #include "lat/kaldi-lattice.h"
 #include "lat/lattice-functions.h"
@@ -101,6 +102,32 @@ bool LatticePostprocessor::GetCTM(CompactLattice &clat,
 
   return true;
 }
+
+void SetResultUsingLattice(
+    CompactLattice &clat, const int result_type,
+    const std::shared_ptr<LatticePostprocessor> &lattice_postprocessor,
+    CudaPipelineResult *result) {
+  if (result_type & CudaPipelineResult::RESULT_TYPE_LATTICE) {
+    if (lattice_postprocessor) {
+      CompactLattice postprocessed_clat;
+      bool ok = lattice_postprocessor->GetPostprocessedLattice(
+          clat, &postprocessed_clat);
+      if (ok) result->SetLatticeResult(std::move(postprocessed_clat));
+    } else {
+      result->SetLatticeResult(std::move(clat));
+    }
+  }
+
+  if (result_type & CudaPipelineResult::RESULT_TYPE_CTM) {
+    CTMResult ctm_result;
+    KALDI_ASSERT(lattice_postprocessor &&
+                 "A lattice postprocessor must be set with "
+                 "SetLatticePostprocessor() to use RESULT_TYPE_CTM");
+    bool ok = lattice_postprocessor->GetCTM(clat, &ctm_result);
+    if (ok) result->SetCTMResult(std::move(ctm_result));
+  }
+}
+
 }  // namespace cuda_decoder
 }  // namespace kaldi
 

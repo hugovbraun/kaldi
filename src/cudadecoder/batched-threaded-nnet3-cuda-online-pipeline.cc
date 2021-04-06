@@ -121,6 +121,22 @@ void BatchedThreadedNnet3CudaOnlinePipeline::SetBestPathCallback(
   best_path_callbacks_.insert({corr_id, callback});
 }
 
+void BatchedThreadedNnet3CudaOnlinePipeline::SetLatticeCallback(
+    CorrelationID corr_id, const SegmentedResultsCallback &callback,
+    const int result_type) {
+  LatticeCallback simple_callback = [=](CompactLattice &clat) {
+    SegmentedLatticeCallbackParams params;
+    params.results.emplace_back();
+    CudaPipelineResult &result = params.results[0];
+    result.SetTimeOffsetSeconds(0);  // TODO
+    SetResultUsingLattice(clat, result_type, lattice_postprocessor_, &result);
+
+    callback(params);
+  };
+
+  SetLatticeCallback(corr_id, simple_callback);
+}
+
 bool BatchedThreadedNnet3CudaOnlinePipeline::TryInitCorrID(
     CorrelationID corr_id, int32 wait_for_us) {
   bool inserted;
@@ -609,6 +625,13 @@ void BatchedThreadedNnet3CudaOnlinePipeline::FinalizeDecoding(
   }
 
   n_lattice_callbacks_not_done_.fetch_sub(1, std::memory_order_release);
+}
+
+void BatchedThreadedNnet3CudaOnlinePipeline::SetLatticePostprocessor(
+    const std::shared_ptr<LatticePostprocessor> &lattice_postprocessor) {
+  lattice_postprocessor_ = lattice_postprocessor;
+  lattice_postprocessor_->SetDecoderFrameShift(GetDecoderFrameShiftSeconds());
+  lattice_postprocessor_->SetTransitionModel(&GetTransitionModel());
 }
 
 void BatchedThreadedNnet3CudaOnlinePipeline::WaitForLatticeCallbacks() {

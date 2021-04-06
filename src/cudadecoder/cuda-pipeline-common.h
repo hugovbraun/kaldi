@@ -33,14 +33,7 @@ namespace cuda_decoder {
 
 // Number of segments of a given length and shift in an utterance of total
 // length nsamples
-inline int NumberOfSegments(int nsamples, int seg_length, int seg_shift) {
-  KALDI_ASSERT(seg_shift > 0);
-  KALDI_ASSERT(seg_length >= seg_shift);
-  int r = seg_length - seg_shift;
-  if (nsamples <= seg_length) return 1;
-  int nsegments = ((nsamples - r) + seg_shift - 1) / seg_shift;
-  return nsegments;
-}
+int NumberOfSegments(int nsamples, int seg_length, int seg_shift);
 
 // Segmentation config struct, used in cuda pipelines
 struct CudaPipelineSegmentationConfig {
@@ -178,8 +171,22 @@ struct HostDeviceVector {
     }
   }
 };
-}  // namespace cuda_decoder
 
+// Write all lattices in results using clat_writer
+// If print_offsets is true, will write each lattice
+// under the key=[utterance_key]-[offset in seconds]
+// prints_offsets should be true if results.size() > 1
+void WriteLattices(std::vector<CudaPipelineResult> &results,
+                   const std::string &key, bool print_offsets,
+                   CompactLatticeWriter &clat_writer);
+
+// Reads all CTM outputs in results and merge them together
+// into a single output. That output is then written as a CTM text format to
+// ostream
+void MergeSegmentsToCTMOutput(std::vector<CudaPipelineResult> &results,
+                              const std::string &key, std::ostream &ostream,
+                              fst::SymbolTable *word_syms = NULL);
+}  // namespace cuda_decoder
 }  // namespace kaldi
 
 #endif  // KALDI_CUDA_DECODER_CUDA_PIPELINE_COMMON_

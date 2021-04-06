@@ -28,6 +28,8 @@
 #include "base/kaldi-utils.h"
 #include "cudadecoder/batched-static-nnet3.h"
 #include "cudadecoder/cuda-decoder.h"
+#include "cudadecoder/cuda-pipeline-common.h"
+#include "cudadecoder/lattice-postprocessor.h"
 #include "cudadecoder/thread-pool-light.h"
 #include "cudafeat/online-batched-feature-pipeline-cuda.h"
 #include "feat/wave-reader.h"
@@ -165,16 +167,17 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
   void SetLatticeCallback(CorrelationID corr_id,
                           const LatticeCallback &callback);
 
-  // Chunk of one utterance. We receive batches of those chunks through
-  // DecodeBatch
-  // Contains pointers to that chunk, the corresponding correlation ID,
-  // and whether that chunk is the last one for that utterance
-  struct UtteranceChunk {
-    CorrelationID corr_id;
-    SubVector<BaseFloat> wave_samples;
-    bool last_chunk;  // sets to true if last chunk for that
-                      // utterance
-  };
+  // Set callback using SegmentedResultsCallback
+  // Able to run lattice postprocessor and generate CTM outputs
+  void SetLatticeCallback(CorrelationID corr_id,
+                          const SegmentedResultsCallback &callback,
+                          const int result_type);
+  // Lattice postprocessor
+  // Applied on both lattice output or CTM output
+  // Optional if lattice output is used
+  // Must be set if a result of type RESULT_TYPE_CTM is used
+  void SetLatticePostprocessor(
+      const std::shared_ptr<LatticePostprocessor> &lattice_postprocessor);
 
   // Receive a batch of chunks. Will decode them, then return.
   // If it contains some last chunks for given utterances, it will call
@@ -409,6 +412,9 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
   // Feature pipelines, associated to a channel
   // Only used if feature extraction is run on the CPU
   std::vector<std::unique_ptr<OnlineNnet2FeaturePipeline>> feature_pipelines_;
+
+  // TODO
+  std::shared_ptr<LatticePostprocessor> lattice_postprocessor_;
 
   // HCLG graph : CudaFst object is a host object, but contains
   // data stored in
