@@ -226,18 +226,24 @@ int main(int argc, char *argv[]) {
               [&clat_writer, latency_ptr, &timer, &ctm_writer,
                &output_writer_m_, key,
                word_syms](SegmentedLatticeCallbackParams &params) {
-                *latency_ptr = timer.Elapsed() - *latency_ptr;
+                if (params.results.empty()) {
+                  KALDI_WARN << "Empty result for callback";
+                  return;
+                }
+                if (params.results[0].IsLastSegment()) {
+                  *latency_ptr = timer.Elapsed() - *latency_ptr;
+                }
 
                 if (clat_writer) {
                   std::lock_guard<std::mutex> lk(output_writer_m_);
-                  KALDI_ASSERT(params.results.size() == 1);
                   clat_writer->Write(key, params.results[0].GetLatticeResult());
                 }
 
                 if (ctm_writer) {
                   std::lock_guard<std::mutex> lk(output_writer_m_);
                   MergeSegmentsToCTMOutput(params.results, key,
-                                           ctm_writer->Stream(), word_syms);
+                                           ctm_writer->Stream(), word_syms,
+                                           /* use segment offset */ false);
                 }
               };
 

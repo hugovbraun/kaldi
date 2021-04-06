@@ -38,7 +38,7 @@ int NumberOfSegments(int nsamples, int seg_length, int seg_shift) {
 void WriteLattices(std::vector<CudaPipelineResult> &results,
                    const std::string &key, bool print_offsets,
                    CompactLatticeWriter &clat_writer) {
-  for (const CudaPipelineResult &result : results) {
+  for (CudaPipelineResult &result : results) {
     double offset = result.GetTimeOffsetSeconds();
     if (!result.HasValidResult()) {
       KALDI_WARN << "Utterance " << key << ": "
@@ -66,7 +66,8 @@ void WriteLattices(std::vector<CudaPipelineResult> &results,
 // ostream
 void MergeSegmentsToCTMOutput(std::vector<CudaPipelineResult> &results,
                               const std::string &key, std::ostream &ostream,
-                              fst::SymbolTable *word_syms) {
+                              fst::SymbolTable *word_syms,
+                              bool use_segment_offsets) {
   size_t nresults = results.size();
 
   if (nresults == 0) {
@@ -99,7 +100,9 @@ void MergeSegmentsToCTMOutput(std::vector<CudaPipelineResult> &results,
     }
 
     auto &result = results[iresult];
-    BaseFloat offset_seconds = result.GetTimeOffsetSeconds();
+    BaseFloat offset_seconds =
+        use_segment_offsets ? result.GetTimeOffsetSeconds() : 0;
+    int isegment = result.GetSegmentID();
     auto &ctm = result.GetCTMResult();
     for (size_t iword = 0; iword < ctm.times_seconds.size(); ++iword) {
       BaseFloat word_from = offset_seconds + ctm.times_seconds[iword].first;
@@ -123,8 +126,8 @@ void MergeSegmentsToCTMOutput(std::vector<CudaPipelineResult> &results,
 
       previous_segment_word_end = word_to;
 
-      ostream << key << " 1 " << word_from << ' ' << (word_to - word_from)
-              << ' ';
+      ostream << key << " " << isegment << "  " << word_from << ' '
+              << (word_to - word_from) << ' ';
 
       int32 word_id = ctm.words[iword];
       if (word_syms)

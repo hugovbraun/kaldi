@@ -54,6 +54,9 @@ void LatticePostprocessor::ApplyConfig() {
 
 bool LatticePostprocessor::GetPostprocessedLattice(
     CompactLattice &clat, CompactLattice *out_clat) const {
+  // Nothing to do for empty lattice
+  if (clat.NumStates() == 0) return true;
+
   bool ok = true;
   // Scale lattice
   if (use_lattice_scale_) fst::ScaleLattice(lattice_scales_, &clat);
@@ -78,15 +81,20 @@ bool LatticePostprocessor::GetPostprocessedLattice(
   if (!word_info_)
     KALDI_ERR << "You must set --word-boundary-rxfilename in the lattice "
                  "postprocessor config";
-
-  ok &= WordAlignLattice(clat, *tmodel_, *word_info_, max_states, out_clat);
+  // ok &=
+  // Ignoring the return false for now (but will print a warning),
+  // because the doc says we can, and it can happen when using endpointing
+  WordAlignLattice(clat, *tmodel_, *word_info_, max_states, out_clat);
   return ok;
 }
 
 bool LatticePostprocessor::GetCTM(CompactLattice &clat,
                                   CTMResult *ctm_result) const {
+  // Empty CTM output for empty lattice
+  if (clat.NumStates() == 0) return true;
+
   CompactLattice postprocessed_lattice;
-  if (!GetPostprocessedLattice(clat, &postprocessed_lattice)) return false;
+  GetPostprocessedLattice(clat, &postprocessed_lattice);
 
   // MBR
   MinimumBayesRisk mbr(postprocessed_lattice, config_.mbr_opts);
@@ -110,9 +118,8 @@ void SetResultUsingLattice(
   if (result_type & CudaPipelineResult::RESULT_TYPE_LATTICE) {
     if (lattice_postprocessor) {
       CompactLattice postprocessed_clat;
-      bool ok = lattice_postprocessor->GetPostprocessedLattice(
-          clat, &postprocessed_clat);
-      if (ok) result->SetLatticeResult(std::move(postprocessed_clat));
+      lattice_postprocessor->GetPostprocessedLattice(clat, &postprocessed_clat);
+      result->SetLatticeResult(std::move(postprocessed_clat));
     } else {
       result->SetLatticeResult(std::move(clat));
     }
@@ -123,8 +130,8 @@ void SetResultUsingLattice(
     KALDI_ASSERT(lattice_postprocessor &&
                  "A lattice postprocessor must be set with "
                  "SetLatticePostprocessor() to use RESULT_TYPE_CTM");
-    bool ok = lattice_postprocessor->GetCTM(clat, &ctm_result);
-    if (ok) result->SetCTMResult(std::move(ctm_result));
+    lattice_postprocessor->GetCTM(clat, &ctm_result);
+    result->SetCTMResult(std::move(ctm_result));
   }
 }
 
